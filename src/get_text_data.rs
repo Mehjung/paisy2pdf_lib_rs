@@ -41,12 +41,12 @@ fn line_to_map(line: &str) -> Result<HashMap<String, String>, Box<dyn std::error
     let mut map = HashMap::new();
     map.insert(PERS_NR.to_string(), line[0..12].trim().to_string());
     map.insert(PAISY_ABRNR.to_string(), line[12..26].trim().to_string());
-    map.insert(NAME.to_string(), line[26..56].trim().to_string());
-    map.insert(VORNAME.to_string(), line[56..86].trim().to_string());
-    map.insert(DATUM.to_string(), line[86..96].trim().to_string());
+    map.insert(NAME.to_string(), line[26..58].trim().to_string());
+    map.insert(VORNAME.to_string(), line[58..82].trim().to_string());
+    map.insert(DATUM.to_string(), line[82..92].trim().to_string());
     map.insert(
         LOHNART_BESCHREIBUNG.to_string(),
-        line[96..159].trim().to_string(),
+        line[92..159].trim().to_string(),
     );
     map.insert(WERTVERAENDERUNG.to_string(), line[159..].trim().to_string());
 
