@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Error, ErrorKind};
+use std::io::{self, BufRead, BufReader, Error, ErrorKind, Read};
 use std::path::Path;
 
 const PERS_NR: &str = "pers_nr";
@@ -17,28 +17,69 @@ lazy_static! {
     static ref RE: Regex = Regex::new(r"^[a-zA-Z0-9]{6}").unwrap();
 }
 
+enum InputSource<'a> {
+    FilePath(&'a str),
+    Content(&'a str),
+}
+
 // Funktion zum Lesen der Datei
-pub fn get_text_data_as_rows(path: &str) -> io::Result<Vec<HashMap<String, String>>> {
-    let path = Path::new(path);
-    let file = File::open(&path)?;
-    let reader = BufReader::new(file);
+pub fn get_text_data_as_rows(input: &str) -> io::Result<Vec<HashMap<String, String>>> {
+    let input_source = determine_input_source(input);
+
+    process_text_data_as_rows(input_source)
+}
+
+fn process_text_data_as_rows(
+    input_source: InputSource,
+) -> io::Result<Vec<HashMap<String, String>>> {
+    let content: String = match input_source {
+        InputSource::FilePath(path) => {
+            let path = Path::new(&path);
+            let file = File::open(&path)?;
+            let mut reader = BufReader::new(file);
+            let mut content = String::new();
+            reader.read_to_string(&mut content)?;
+
+            content
+        }
+        InputSource::Content(content) => {
+            // println!("{:}", content.to_string());
+            content.to_string()
+        }
+    };
+
+    // Normalize line endings
+    let normalized_content = content
+        .replace("\"", "") // Entfernen aller Anführungszeichen
+        .replace("\r\n", "\n")
+        .replace("\r", "\n");
 
     let mut rows = Vec::new();
-    for line in reader.lines() {
-        let line = line?;
+    // Process each line
+    for line in normalized_content.lines() {
+        println!("{:?}", line);
         if should_process(&line) {
             let row =
                 line_to_map(&line).map_err(|e| Error::new(ErrorKind::Other, e.to_string()))?;
             rows.push(row);
         }
     }
-
+    // println!("{:?}", rows);
     Ok(rows)
+}
+
+fn determine_input_source(input: &str) -> InputSource {
+    if Path::new(input).is_file() {
+        InputSource::FilePath(input)
+    } else {
+        InputSource::Content(input)
+    }
 }
 
 // Eine Funktion, die eine Zeile der Textdatei nimmt und ein HashMap erstellt
 fn line_to_map(line: &str) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
     let mut map = HashMap::new();
+
     map.insert(PERS_NR.to_string(), line[0..12].trim().to_string());
     map.insert(PAISY_ABRNR.to_string(), line[12..26].trim().to_string());
     map.insert(NAME.to_string(), line[26..58].trim().to_string());
@@ -66,4 +107,24 @@ fn format_time(time: &str) -> Result<String, std::num::ParseFloatError> {
     let hours = time.trunc() as i32;
     let minutes = ((time - hours as f32).abs() * 60.0).round() as i32;
     Ok(format!("{} {:02}:{:02}", sign, hours.abs(), minutes))
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::string;
+
+    use super::*;
+    use crate::common::mock_string::MOCK_STRINGS;
+
+    #[test]
+    fn test_get_data() {
+        //let file_data =
+        //get_text_data_as_rows("C:\\Users\\isla1\\OneDrive\\Desktop\\Data\\text_data.txt").unwrap();
+        let string_data = get_text_data_as_rows(MOCK_STRINGS[0]).unwrap();
+        //println!("{}", MOCK_STRINGS[0]);
+        //print!("{:?}", string_data);
+
+        //assert_eq!(file_data, string_data);
+    }
 }

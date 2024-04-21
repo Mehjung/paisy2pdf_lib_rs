@@ -9,6 +9,7 @@ edition = "2021"
 minijinja = "1.0.20"
 regex = "*"
 lazy_static = "*"
+path-clean = "*"
 
 [profile.release]
 lto = true

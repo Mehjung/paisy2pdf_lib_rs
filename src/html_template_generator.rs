@@ -1,5 +1,6 @@
 use crate::get_text_data::get_text_data_as_rows;
 use minijinja::{Environment, Value};
+use path_clean::PathClean;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{remove_file, File};
@@ -7,14 +8,19 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub fn process_files(paths: &[&str], output_path: &str) -> std::io::Result<()> {
-    for path in paths {
-        if path.ends_with(".txt") {
-            let new_path = replace_path(path, output_path).ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::Other, "Failed to generate new path")
-            })?;
-            generate_htmlstring_template(path, &new_path)?;
-        }
+pub fn process_files(
+    paths: &[&str],
+    output_path: &str,
+    optional_paths: &[&str],
+) -> std::io::Result<()> {
+    let binding = normalize_path(output_path);
+    let cleaned_output_path = binding.as_str();
+    for (path, optional_path) in paths.iter().zip(optional_paths.iter()) {
+        let new_path = replace_path(optional_path, cleaned_output_path).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::Other, "Failed to generate new path")
+        })?;
+
+        generate_htmlstring_template(path, &new_path)?;
     }
     Ok(())
 }
@@ -75,13 +81,19 @@ fn add_suffix(file_path: &str, suffix: &str) -> Option<String> {
 }
 
 fn replace_path(source_path: &str, target_path: &str) -> Option<String> {
-    let path = Path::new(source_path);
-    if let Some(file_name) = path.file_name().and_then(OsStr::to_str) {
-        let target_path = Path::new(target_path);
-        let mut new_path = PathBuf::from(target_path);
+    let source = Path::new(source_path);
+    let target = Path::new(target_path);
+
+    // Extrahieren des Dateinamens aus dem Quellpfad
+    if let Some(file_name) = source.file_name().and_then(OsStr::to_str) {
+        // Erstellen eines neuen Pfadobjekts basierend auf dem Zielverzeichnis
+        let mut new_path = PathBuf::from(target);
+        // Hinzufügen des Dateinamens zum Zielverzeichnis
         new_path.push(file_name);
+        // Konvertierung des Pfadobjekts in einen String und Rückgabe
         Some(new_path.to_string_lossy().into_owned())
     } else {
+        // Rückgabe von None, falls kein Dateiname im Quellpfad gefunden wurde
         None
     }
 }
@@ -96,8 +108,6 @@ fn convert_html_to_pdf(html_file_path: String, output_pdf_path: String) -> std::
         &format!("file://{}", Path::new(&html_file_path).display()),
     ];
 
-    println!("Ausführungsstring: {} {:?}", chrome_path, args); // Zeigt den Ausführungsstring an
-
     let mut child = Command::new(chrome_path).args(&args).spawn()?;
 
     let ecode = child.wait()?;
@@ -109,5 +119,23 @@ fn convert_html_to_pdf(html_file_path: String, output_pdf_path: String) -> std::
             std::io::ErrorKind::Other,
             "Failed to generate PDF",
         ))
+    }
+}
+
+fn normalize_path(path: &str) -> String {
+    let path_buf = PathBuf::from(path);
+    let cleaned_path = path_buf.clean(); // Verwenden Sie die clean Methode, um den Pfad zu bereinigen
+    cleaned_path.to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_path() {
+        let path = "C:\\Users\\isla1\\OneDrive\\Desktop\\Data\\";
+        let normalized_path = normalize_path(path);
+        assert_eq!(normalized_path, "C:\\Users\\isla1\\OneDrive\\Desktop\\Data");
     }
 }
