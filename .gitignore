@@ -2,3 +2,4 @@
 *.html
 !template.html
 mock_string.rs
+mod.rs
