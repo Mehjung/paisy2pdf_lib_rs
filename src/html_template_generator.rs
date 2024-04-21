@@ -7,27 +7,30 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub fn process_files(paths: &[&str]) -> std::io::Result<()> {
+pub fn process_files(paths: &[&str], output_path: &str) -> std::io::Result<()> {
     for path in paths {
         if path.ends_with(".txt") {
-            generate_htmlstring_template(path)?;
+            let new_path = replace_path(path, output_path).ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::Other, "Failed to generate new path")
+            })?;
+            generate_htmlstring_template(path, &new_path)?;
         }
     }
     Ok(())
 }
 
-fn generate_htmlstring_template(path: &str) -> std::io::Result<()> {
+fn generate_htmlstring_template(path: &str, new_path: &str) -> std::io::Result<()> {
     let rows = get_text_data_as_rows(&path)?;
 
     let rendered = render_template(rows)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
-    let html_output_path = add_suffix(&path, "html").ok_or(std::io::Error::new(
+    let html_output_path = add_suffix(&new_path, "html").ok_or(std::io::Error::new(
         std::io::ErrorKind::Other,
         "Failed to add HTML suffix".to_string(),
     ))?;
 
-    let output_pdf_path = add_suffix(&path, "pdf").ok_or(std::io::Error::new(
+    let output_pdf_path = add_suffix(&new_path, "pdf").ok_or(std::io::Error::new(
         std::io::ErrorKind::Other,
         "Failed to add PDF suffix".to_string(),
     ))?;
@@ -65,6 +68,18 @@ fn add_suffix(file_path: &str, suffix: &str) -> Option<String> {
     if let Some(stem) = path.file_stem().and_then(OsStr::to_str) {
         let mut new_path = PathBuf::from(path.parent().unwrap_or(Path::new("")));
         new_path.push(format!("{}.{}", stem, suffix));
+        Some(new_path.to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
+fn replace_path(source_path: &str, target_path: &str) -> Option<String> {
+    let path = Path::new(source_path);
+    if let Some(file_name) = path.file_name().and_then(OsStr::to_str) {
+        let target_path = Path::new(target_path);
+        let mut new_path = PathBuf::from(target_path);
+        new_path.push(file_name);
         Some(new_path.to_string_lossy().into_owned())
     } else {
         None
