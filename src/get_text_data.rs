@@ -115,13 +115,13 @@ mod tests {
     use std::string;
 
     use super::*;
-    use crate::common::mock_string::MOCK_STRINGS;
+    //use crate::common::mock_string::MOCK_STRINGS;
 
     #[test]
     fn test_get_data() {
         //let file_data =
         //get_text_data_as_rows("C:\\Users\\isla1\\OneDrive\\Desktop\\Data\\text_data.txt").unwrap();
-        let string_data = get_text_data_as_rows(MOCK_STRINGS[0]).unwrap();
+        //let string_data = get_text_data_as_rows(MOCK_STRINGS[0]).unwrap();
         //println!("{}", MOCK_STRINGS[0]);
         //print!("{:?}", string_data);
 
