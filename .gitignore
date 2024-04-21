@@ -2,4 +2,5 @@
 *.html
 !template.html
 mock_string.rs
-mod.rs
+/src/common/
+/tests/
